@@ -4,13 +4,22 @@ import re
 import io
 from pdf2image import convert_from_bytes
 import pytesseract
+from PIL import Image
 from reportlab.pdfgen import canvas
 
 st.set_page_config(page_title="Costing App", layout="wide")
 
 st.title("📊 Costing Calculator")
 
-uploaded_file = st.file_uploader("Upload PDF / Excel", type=["pdf","xlsx"])
+# ===============================
+# INPUT ZONE
+# ===============================
+st.subheader("📂 Upload / Paste Quotation")
+
+uploaded_file = st.file_uploader("Upload PDF / Excel / Image", type=["pdf","xlsx","jpg","png"])
+
+# ⭐ เพิ่มตรงนี้ → Paste image
+pasted_image = st.clipboard_image()
 
 rate = st.number_input("Exchange Rate", value=33.0)
 freight = st.number_input("Freight USD", value=0.0)
@@ -18,6 +27,9 @@ tax = st.number_input("Tax %", value=0.0)
 containers = st.number_input("Containers", value=0)
 clearing_per = st.number_input("Clearing / Container", value=40000.0)
 
+# ===============================
+# OCR FUNCTION
+# ===============================
 def extract_items_from_text(text):
     rows = []
     for line in text.split("\n"):
@@ -30,7 +42,12 @@ def extract_items_from_text(text):
 
 df = pd.DataFrame(columns=["Item","Qty","Unit Price"])
 
+# ===============================
+# FILE PROCESSING
+# ===============================
 if uploaded_file:
+
+    # PDF
     if uploaded_file.name.endswith(".pdf"):
         images = convert_from_bytes(uploaded_file.read())
         text = ""
@@ -38,13 +55,35 @@ if uploaded_file:
             text += pytesseract.image_to_string(img)
         df = extract_items_from_text(text)
 
+    # Excel
     elif uploaded_file.name.endswith(".xlsx"):
         df = pd.read_excel(uploaded_file)
 
+    # Image upload
+    elif uploaded_file.name.endswith(("jpg","png")):
+        image = Image.open(uploaded_file)
+        text = pytesseract.image_to_string(image)
+        df = extract_items_from_text(text)
+
+# ===============================
+# PASTE IMAGE PROCESSING
+# ===============================
+if pasted_image is not None:
+    st.success("📋 Image pasted from clipboard")
+    text = pytesseract.image_to_string(pasted_image)
+    df = extract_items_from_text(text)
+
+# ===============================
+# TABLE EDIT
+# ===============================
 st.subheader("Items")
 df = st.data_editor(df, num_rows="dynamic")
 
+# ===============================
+# CALCULATION
+# ===============================
 if st.button("Calculate"):
+
     df["FOB"] = df["Qty"] * df["Unit Price"]
     total_fob = df["FOB"].sum()
 
