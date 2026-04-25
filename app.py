@@ -68,11 +68,6 @@ if uploaded_file:
 # ===============================
 # PASTE IMAGE PROCESSING
 # ===============================
-if pasted_image is not None:
-    st.success("📋 Image pasted from clipboard")
-    text = pytesseract.image_to_string(pasted_image)
-    df = extract_items_from_text(text)
-
 # ===============================
 # TABLE EDIT
 # ===============================
